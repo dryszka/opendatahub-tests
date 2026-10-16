@@ -6,8 +6,6 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import requests
-import structlog
 from kubernetes.dynamic import DynamicClient
 from ocp_resources.config_map import ConfigMap
 from ocp_resources.pod import Pod
@@ -18,6 +16,7 @@ from tests.pipelines_components.constants import (
     AUTORAG_MAX_RAG_PATTERNS,
     AUTORAG_OPTIMIZATION_METRIC,
     AUTORAG_TEST_DATA_KEY,
+    AUTORAG_VECTOR_IO_PROVIDER_ID,
     DSPA_NAME,
     DSPA_S3_BUCKET,
     DSPA_S3_SECRET,
@@ -26,8 +25,6 @@ from tests.pipelines_components.constants import (
 )
 from tests.pipelines_components.utils import create_pipeline_run_managed
 from utilities.general import collect_pod_information
-
-LOGGER = structlog.get_logger(name=__name__)
 
 
 def upload_autorag_data(client: DynamicClient, namespace: str | None) -> None:
@@ -114,11 +111,10 @@ def submit_autorag_run(
     ca_bundle: str,
     pipeline: dict[str, str],
     s3_secret_name: str | None,
-    maas_secret_name: str | None,
-    db_secret_name: str | None,
+    ogx_secret_name: str | None,
     run_name: str,
 ) -> str:
-    """Submit the managed run, retrying older pipeline parameter names if required.
+    """Submit the managed AutoRAG run using the RHOAI 3.5 pipeline inputs.
 
     Args:
         api_url: KFP API base URL.
@@ -126,54 +122,34 @@ def submit_autorag_run(
         ca_bundle: TLS CA bundle file.
         pipeline: Managed pipeline and version identifiers.
         s3_secret_name: DSPA object-storage Secret.
-        maas_secret_name: Secret with MaaS and legacy OGX connection fields.
-        db_secret_name: Vector database connection Secret.
+        ogx_secret_name: Secret with OGX API connection fields.
         run_name: Display name for the run.
 
     Returns:
         The submitted KFP run ID.
     """
-    assert s3_secret_name and maas_secret_name and db_secret_name, "AutoRAG connection Secrets must have names"
+    assert s3_secret_name and ogx_secret_name, "AutoRAG connection Secrets must have names"
     parameters: dict[str, Any] = {
         "input_data_secret_name": s3_secret_name,
         "input_data_bucket_name": DSPA_S3_BUCKET,
-        "input_data_keys": [AUTORAG_INPUT_DATA_KEY],
+        "input_data_key": AUTORAG_INPUT_DATA_KEY,
         "test_data_secret_name": s3_secret_name,
         "test_data_bucket_name": DSPA_S3_BUCKET,
         "test_data_key": AUTORAG_TEST_DATA_KEY,
-        "maas_secret_name": maas_secret_name,
-        "db_secret_name": db_secret_name,
+        "ogx_secret_name": ogx_secret_name,
+        "vector_io_provider_id": AUTORAG_VECTOR_IO_PROVIDER_ID,
         "embedding_models": ["smoke-embedding-model"],
         "generation_models": ["smoke-generation-model"],
         "optimization_max_rag_patterns": AUTORAG_MAX_RAG_PATTERNS,
         "optimization_metric": AUTORAG_OPTIMIZATION_METRIC,
+        "preset": "speed",
     }
-    fallback_parameters = {
-        "vector_db_secret_name": ("db_secret_name", db_secret_name),
-        "ogx_secret_name": ("maas_secret_name", maas_secret_name),
-        "input_data_key": ("input_data_keys", AUTORAG_INPUT_DATA_KEY),
-    }
-    for attempts_remaining in range(len(fallback_parameters), -1, -1):
-        try:
-            return create_pipeline_run_managed(
-                api_url=api_url,
-                headers=headers,
-                pipeline_id=pipeline["pipeline_id"],
-                pipeline_version_id=pipeline["pipeline_version_id"],
-                run_name=run_name,
-                parameters=parameters,
-                ca_bundle=ca_bundle,
-            )
-        except requests.HTTPError as error:
-            response = error.response
-            if response is None or response.status_code != 400 or not attempts_remaining:
-                raise
-            for required_name, (current_name, value) in fallback_parameters.items():
-                if f"parameter {required_name} is not optional" in response.text and current_name in parameters:
-                    parameters[required_name] = value
-                    del parameters[current_name]
-                    LOGGER.info(f"Managed pipeline requires {required_name}; retrying run submission")
-                    break
-            else:
-                raise
-    raise AssertionError("AutoRAG submission retries exhausted")
+    return create_pipeline_run_managed(
+        api_url=api_url,
+        headers=headers,
+        pipeline_id=pipeline["pipeline_id"],
+        pipeline_version_id=pipeline["pipeline_version_id"],
+        run_name=run_name,
+        parameters=parameters,
+        ca_bundle=ca_bundle,
+    )

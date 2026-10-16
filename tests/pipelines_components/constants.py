@@ -82,7 +82,8 @@ MINIO_UPLOADER_SECURITY_CONTEXT: dict[str, object] = {
 AUTORAG_INPUT_DATA_KEY: str = os.getenv("AUTORAG_INPUT_DATA_KEY", "autorag-smoke/input_data")
 AUTORAG_TEST_DATA_KEY: str = os.getenv("AUTORAG_TEST_DATA_KEY", "autorag-smoke/benchmark_data.json")
 AUTORAG_MAX_RAG_PATTERNS: int = int(os.getenv("AUTORAG_MAX_RAG_PATTERNS", "4"))
-AUTORAG_OPTIMIZATION_METRIC: str = os.getenv("AUTORAG_OPTIMIZATION_METRIC", "unitxt:faithfulness")
+AUTORAG_OPTIMIZATION_METRIC: str = os.getenv("AUTORAG_OPTIMIZATION_METRIC", "faithfulness")
+AUTORAG_VECTOR_IO_PROVIDER_ID: str = os.getenv("AUTORAG_VECTOR_IO_PROVIDER_ID", "smoke-vector-io-provider")
 
 AUTORAG_PIPELINE_START_TIMEOUT: int = int(os.getenv("AUTORAG_PIPELINE_START_TIMEOUT", "300"))
 

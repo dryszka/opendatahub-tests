@@ -6,7 +6,11 @@ import pytest
 from kubernetes.dynamic import DynamicClient
 from ocp_resources.namespace import Namespace
 
-from tests.pipelines_components.constants import AUTORAG_INPUT_DATA_KEY, AUTORAG_PIPELINE_START_TIMEOUT
+from tests.pipelines_components.constants import (
+    AUTORAG_INPUT_DATA_KEY,
+    AUTORAG_PIPELINE_START_TIMEOUT,
+    AUTORAG_VECTOR_IO_PROVIDER_ID,
+)
 from tests.pipelines_components.upgrade_utils import (
     load_upgrade_baseline,
     save_upgrade_baseline,
@@ -44,13 +48,9 @@ class TestAutoRAGUpgrade:
         assert reference.get("pipeline_id") == autorag_upgrade_pipeline["pipeline_id"]
         assert reference.get("pipeline_version_id") == autorag_upgrade_pipeline["pipeline_version_id"]
         parameters = run.get("runtime_config", {}).get("parameters", {})
-        input_data_parameters = {
-            key: parameters[key] for key in ("input_data_keys", "input_data_key") if key in parameters
-        }
-        assert input_data_parameters in (
-            {"input_data_keys": [AUTORAG_INPUT_DATA_KEY]},
-            {"input_data_key": AUTORAG_INPUT_DATA_KEY},
-        )
+        input_data_parameters = {"input_data_key": parameters.get("input_data_key")}
+        assert input_data_parameters == {"input_data_key": AUTORAG_INPUT_DATA_KEY}
+        assert parameters.get("vector_io_provider_id") == AUTORAG_VECTOR_IO_PROVIDER_ID
         workflow_name = wait_for_upgrade_run_start(
             client=admin_client,
             namespace=autorag_upgrade_namespace.name,
@@ -66,6 +66,7 @@ class TestAutoRAGUpgrade:
                 "display_name": run["display_name"],
                 "pipeline_version_reference": reference,
                 "input_data_parameters": input_data_parameters,
+                "vector_io_provider_id": parameters["vector_io_provider_id"],
                 "workflow_name": workflow_name,
             },
         )
@@ -94,9 +95,8 @@ class TestAutoRAGUpgrade:
         assert run["display_name"] == baseline["display_name"]
         assert run["pipeline_version_reference"] == baseline["pipeline_version_reference"]
         parameters = run["runtime_config"]["parameters"]
-        assert {key: parameters[key] for key in ("input_data_keys", "input_data_key") if key in parameters} == baseline[
-            "input_data_parameters"
-        ]
+        assert {"input_data_key": parameters["input_data_key"]} == baseline["input_data_parameters"]
+        assert parameters["vector_io_provider_id"] == baseline["vector_io_provider_id"]
         assert autorag_upgrade_pipeline["pipeline_id"] == baseline["pipeline_version_reference"]["pipeline_id"], (
             "Original managed AutoRAG pipeline is no longer discoverable"
         )

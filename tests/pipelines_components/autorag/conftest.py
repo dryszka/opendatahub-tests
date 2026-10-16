@@ -45,38 +45,18 @@ def pipelines_namespace(admin_client: DynamicClient) -> Generator[Namespace, Any
 
 
 @pytest.fixture(scope="class")
-def autorag_maas_secret(
+def autorag_ogx_secret(
     admin_client: DynamicClient,
     pipelines_namespace: Namespace,
 ) -> Generator[Secret, Any, Any]:
-    """Provide placeholder MaaS and legacy OGX connection fields."""
+    """Provide placeholder OGX API connection fields."""
     with Secret(
         client=admin_client,
         namespace=pipelines_namespace.name,
-        name="autorag-maas-connection",
+        name="autorag-ogx-connection",
         string_data={
-            "MAAS_BASE_URL": "http://maas.invalid/v1",
-            "MAAS_API_KEY": "placeholder",  # pragma: allowlist secret
             "OGX_CLIENT_BASE_URL": "http://ogx.invalid",
             "OGX_CLIENT_API_KEY": "placeholder",  # pragma: allowlist secret
-        },
-    ) as secret:
-        yield secret
-
-
-@pytest.fixture(scope="class")
-def autorag_db_secret(
-    admin_client: DynamicClient,
-    pipelines_namespace: Namespace,
-) -> Generator[Secret, Any, Any]:
-    """Provide the required Milvus Secret shape without a database service."""
-    with Secret(
-        client=admin_client,
-        namespace=pipelines_namespace.name,
-        name="autorag-vector-db-connection",
-        string_data={
-            "MILVUS_URI": "http://milvus.invalid:19530",
-            "MILVUS_TOKEN": "placeholder",  # pragma: allowlist secret
         },
     ) as secret:
         yield secret
@@ -116,8 +96,7 @@ def autorag_run_id(
     dspa_auth_headers: dict[str, str],
     dspa_ca_bundle_file: str,
     autorag_managed_pipeline: dict[str, str],
-    autorag_maas_secret: Secret,
-    autorag_db_secret: Secret,
+    autorag_ogx_secret: Secret,
     dspa_s3_credentials: Secret,
     autorag_test_data: None,
 ) -> str:
@@ -128,8 +107,7 @@ def autorag_run_id(
         ca_bundle=dspa_ca_bundle_file,
         pipeline=autorag_managed_pipeline,
         s3_secret_name=dspa_s3_credentials.name,
-        maas_secret_name=autorag_maas_secret.name,
-        db_secret_name=autorag_db_secret.name,
+        ogx_secret_name=autorag_ogx_secret.name,
         run_name=f"autorag-smoke-{uuid.uuid4().hex[:8]}",
     )
 
@@ -316,39 +294,18 @@ def autorag_upgrade_s3_secret(
 
 
 @pytest.fixture(scope="session")
-def autorag_upgrade_maas_secret(
+def autorag_upgrade_ogx_secret(
     admin_client: DynamicClient,
     autorag_upgrade_namespace: Namespace,
 ) -> Generator[Secret, Any, Any]:
-    """Keep placeholder MaaS and legacy OGX connection fields across the upgrade."""
+    """Keep placeholder OGX API connection fields across the upgrade."""
     with Secret(
         client=admin_client,
         namespace=autorag_upgrade_namespace.name,
-        name="autorag-maas-connection",
+        name="autorag-ogx-connection",
         string_data={
-            "MAAS_BASE_URL": "http://maas.invalid/v1",
-            "MAAS_API_KEY": "placeholder",  # pragma: allowlist secret
             "OGX_CLIENT_BASE_URL": "http://ogx.invalid",
             "OGX_CLIENT_API_KEY": "placeholder",  # pragma: allowlist secret
-        },
-        teardown=False,
-    ) as secret:
-        yield secret
-
-
-@pytest.fixture(scope="session")
-def autorag_upgrade_db_secret(
-    admin_client: DynamicClient,
-    autorag_upgrade_namespace: Namespace,
-) -> Generator[Secret, Any, Any]:
-    """Keep the placeholder Milvus connection Secret across the upgrade."""
-    with Secret(
-        client=admin_client,
-        namespace=autorag_upgrade_namespace.name,
-        name="autorag-vector-db-connection",
-        string_data={
-            "MILVUS_URI": "http://milvus.invalid:19530",
-            "MILVUS_TOKEN": "placeholder",  # pragma: allowlist secret
         },
         teardown=False,
     ) as secret:
@@ -372,8 +329,7 @@ def autorag_upgrade_run_id(
     autorag_upgrade_ca_bundle: str,
     autorag_upgrade_pipeline: dict[str, str],
     autorag_upgrade_s3_secret: Secret,
-    autorag_upgrade_maas_secret: Secret,
-    autorag_upgrade_db_secret: Secret,
+    autorag_upgrade_ogx_secret: Secret,
     autorag_upgrade_test_data: None,
 ) -> str:
     """Submit a managed run with the same inputs as the AutoRAG smoke test."""
@@ -383,7 +339,6 @@ def autorag_upgrade_run_id(
         ca_bundle=autorag_upgrade_ca_bundle,
         pipeline=autorag_upgrade_pipeline,
         s3_secret_name=autorag_upgrade_s3_secret.name,
-        maas_secret_name=autorag_upgrade_maas_secret.name,
-        db_secret_name=autorag_upgrade_db_secret.name,
+        ogx_secret_name=autorag_upgrade_ogx_secret.name,
         run_name="autorag-upgrade",
     )

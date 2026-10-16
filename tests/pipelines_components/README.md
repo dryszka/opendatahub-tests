@@ -73,7 +73,7 @@ identities afterward. They do not need external S3 credentials.
 
 The AutoRAG smoke test uploads a local document and a matching benchmark record
 from [`autorag/data/`](autorag/data/README.md). It creates the required connection
-Secrets and supplies model identifiers for pipeline submission. No MaaS models,
+Secrets and supplies placeholder model and OGX vector I/O provider identifiers for pipeline submission. No live OGX models,
 database, or external S3 credentials are required. This verifies pipeline
 registration and startup only, not completed RAG optimization.
 
@@ -82,7 +82,8 @@ registration and startup only, not completed RAG optimization.
 | `AUTORAG_INPUT_DATA_KEY` | Destination prefix for the sample document | `autorag-smoke/input_data` |
 | `AUTORAG_TEST_DATA_KEY` | Destination key for generated benchmark JSON | `autorag-smoke/benchmark_data.json` |
 | `AUTORAG_MAX_RAG_PATTERNS` | Maximum RAG patterns to evaluate | `4` |
-| `AUTORAG_OPTIMIZATION_METRIC` | Optimization metric | `unitxt:faithfulness` |
+| `AUTORAG_OPTIMIZATION_METRIC` | Optimization metric (`faithfulness`, `answer_correctness`, `context_correctness`, `answer_relevance`, or `overall_score`) | `faithfulness` |
+| `AUTORAG_VECTOR_IO_PROVIDER_ID` | OGX vector I/O provider identifier (placeholder for startup checks) | `smoke-vector-io-provider` |
 | `AUTORAG_PIPELINE_START_TIMEOUT` | Max wait for workflow progression (sec) | `300` |
 
 ### Managed pipeline overrides (optional)
@@ -157,9 +158,9 @@ training or RAG optimization.
 
 - Creates a dedicated namespace (`autorag-aqa-<hash>`)
 - Deploys DSPA with built-in MinIO
-- Creates the required connection Secrets
+- Creates S3 and placeholder OGX API connection Secrets (`OGX_CLIENT_BASE_URL`, `OGX_CLIENT_API_KEY`)
 - Uploads a sample document and benchmark JSON from the repo to DSPA MinIO
 - Discovers the managed pipeline and submits a run via the DSPA REST API
-- Retries with `vector_db_secret_name` if the managed pipeline rejects `db_secret_name`
+- Uses the RHOAI 3.5 inputs: `input_data_key`, `ogx_secret_name`, and `vector_io_provider_id`, with the `speed` preset
 - Verifies the run is registered and its workflow starts, without waiting for optimization to finish
 - Cleans up namespace on teardown

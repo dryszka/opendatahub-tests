@@ -7,6 +7,7 @@ from timeout_sampler import TimeoutExpiredError, TimeoutSampler
 from tests.pipelines_components.constants import (
     AUTORAG_INPUT_DATA_KEY,
     AUTORAG_PIPELINE_START_TIMEOUT,
+    AUTORAG_VECTOR_IO_PROVIDER_ID,
     PIPELINE_POLL_INTERVAL,
 )
 from tests.pipelines_components.utils import (
@@ -47,9 +48,12 @@ class TestAutoRAGSmoke:
             "AutoRAG run does not reference the managed pipeline version"
         )
         parameters = run.get("runtime_config", {}).get("parameters", {})
-        assert parameters.get("input_data_keys") == [AUTORAG_INPUT_DATA_KEY] or parameters.get("input_data_key") == (
-            AUTORAG_INPUT_DATA_KEY
-        ), "AutoRAG run does not reference the uploaded documents"
+        assert parameters.get("input_data_key") == AUTORAG_INPUT_DATA_KEY, (
+            "AutoRAG run does not reference the uploaded documents"
+        )
+        assert parameters.get("vector_io_provider_id") == AUTORAG_VECTOR_IO_PROVIDER_ID, (
+            "AutoRAG run does not reference the configured vector I/O provider"
+        )
 
         last_phase: str | None = None
         try:
